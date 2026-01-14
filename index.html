@@ -3,205 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRYNOS OS | Command Center</title>
+    <title>KRYNOS REBORN</title>
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { margin: 0; padding: 0; background: #050505; color: #e5e5e5; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
-        #root { height: 100%; }
-        button:hover { filter: brightness(1.2); cursor: pointer; }
+        body { margin: 0; padding: 0; background: #050505; color: #E5E5E5; font-family: 'Inter', sans-serif; overflow: hidden; }
+        * { box-sizing: border-box; }
+        /* Scrollbar custom */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0D0D0E; }
+        ::-webkit-scrollbar-thumb { background: #262629; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00F2FF; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
+        // 1. ADAPTATION DES IMPORTS (C'est ici que ça bloquait avant)
         const { useState, useEffect } = React;
-        const { BarChart3, Users, Folder, Settings, Plus, Trash2, Power, HardDrive, Shield, Terminal, Upload, File, Download, X, Lock, LogOut, User, Activity, Clock } = lucide;
+        const { 
+            BarChart3, Users, Folder, Settings, Plus, Trash2, Edit2, Power, 
+            HardDrive, Shield, Terminal, Upload, FileCode, FileImage, 
+            FileText, File, Download, X 
+        } = lucide;
 
+        // 2. TON CODE KRYNOS-REBUILD (Adapté)
         function App() {
-          const [isAuthenticated, setIsAuthenticated] = useState(false);
-          const [currentUser, setCurrentUser] = useState(null);
-          const [authForm, setAuthForm] = useState({ username: '', password: '' });
-          const [currentPage, setCurrentPage] = useState('dashboard');
-          
-          const [projects, setProjects] = useState([]);
-          const [team, setTeam] = useState([]);
-          const [files, setFiles] = useState([]);
-          const [logs, setLogs] = useState([]);
-          const [webhook, setWebhook] = useState('');
-          
-          const [modals, setModals] = useState({ project: false, member: false });
-          const [forms, setForms] = useState({ 
-            project: { name: '', desc: '', progress: 0 },
-            member: { name: '', role: '', status: 'active' }
-          });
-          const [termData, setTermData] = useState({ input: '', output: ['> KRYNOS Intelligence Hub Online', '> Type "help" for protocols'] });
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [projects, setProjects] = useState([]);
+            const [team, setTeam] = useState([]);
+            const [files, setFiles] = useState([]);
+            const [logs, setLogs] = useState([{ id: 1, timestamp: new Date().toISOString(), action: 'SYSTEM_START', details: 'KRYNOS initialized' }]);
+            const [webhook, setWebhook] = useState('');
+            
+            const [showProjectModal, setShowProjectModal] = useState(false);
+            const [showMemberModal, setShowMemberModal] = useState(false);
+            const [showFileModal, setShowFileModal] = useState(null);
+            const [editingProject, setEditingProject] = useState(null);
+            const [editingMember, setEditingMember] = useState(null);
+            
+            const [projectForm, setProjectForm] = useState({ name: '', description: '', progress: 0 });
+            const [memberForm, setMemberForm] = useState({ name: '', role: '', status: 'active' });
+            
+            const [terminalOutput, setTerminalOutput] = useState(['> KRYNOS Terminal v1.0', '> Type "help" for commands']);
+            const [terminalInput, setTerminalInput] = useState('');
 
-          useEffect(() => {
-            const load = (key, def = '[]') => JSON.parse(localStorage.getItem(`k3_${key}`) || def);
-            setProjects(load('projects'));
-            setTeam(load('team'));
-            setFiles(load('files'));
-            setLogs(load('logs'));
-            setWebhook(localStorage.getItem('k3_webhook') || '');
-            const session = localStorage.getItem('k3_session');
-            if (session) { setIsAuthenticated(true); setCurrentUser(JSON.parse(session)); }
-          }, []);
+            // Chargement des données
+            useEffect(() => {
+                const load = (k) => JSON.parse(localStorage.getItem(`krynos_${k}`) || '[]');
+                setProjects(load('projects'));
+                setTeam(load('team'));
+                setFiles(load('files'));
+                setLogs(load('logs'));
+                setWebhook(localStorage.getItem('krynos_webhook') || '');
+            }, []);
 
-          useEffect(() => {
-            localStorage.setItem('k3_projects', JSON.stringify(projects));
-            localStorage.setItem('k3_team', JSON.stringify(team));
-            localStorage.setItem('k3_files', JSON.stringify(files));
-            localStorage.setItem('k3_logs', JSON.stringify(logs));
-            localStorage.setItem('k3_webhook', webhook);
-          }, [projects, team, files, logs, webhook]);
+            // Sauvegarde automatique
+            useEffect(() => { localStorage.setItem('krynos_projects', JSON.stringify(projects)); }, [projects]);
+            useEffect(() => { localStorage.setItem('krynos_team', JSON.stringify(team)); }, [team]);
+            useEffect(() => { localStorage.setItem('krynos_files', JSON.stringify(files)); }, [files]);
+            useEffect(() => { localStorage.setItem('krynos_logs', JSON.stringify(logs)); }, [logs]);
+            useEffect(() => { localStorage.setItem('krynos_webhook', webhook); }, [webhook]);
 
-          const addLog = (action, details) => {
-            const newLog = { id: Date.now(), timestamp: new Date().toISOString(), user: currentUser?.name || 'System', action, details };
-            setLogs(prev => [newLog, ...prev].slice(0, 50));
-          };
+            const addLog = (action, details) => {
+                const newLog = { id: Date.now(), timestamp: new Date().toISOString(), action, details };
+                setLogs(prev => [newLog, ...prev].slice(0, 100));
+            };
 
-          const sendDiscord = async (title, message, color = 0x00F2FF) => {
-            if (!webhook) return;
-            try {
-              await fetch(webhook, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  embeds: [{ title: `[KRYNOS] ${title}`, description: `${message}\n**Operative:** ${currentUser?.name || 'System'}`, color, timestamp: new Date().toISOString() }]
-                })
-              });
-            } catch (e) { console.error("Discord error", e); }
-          };
+            const sendDiscord = async (title, description, color = 0x00F2FF) => {
+                if (!webhook) return;
+                try {
+                    await fetch(webhook, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            embeds: [{
+                                title: `🔷 KRYNOS | ${title}`,
+                                description,
+                                color,
+                                timestamp: new Date().toISOString(),
+                                footer: { text: 'KRYNOS Command Center' }
+                            }]
+                        })
+                    });
+                } catch (e) { console.error('Discord error:', e); }
+            };
 
-          const handleLogin = (e) => {
-            e.preventDefault();
-            if (authForm.username && authForm.password === 'krynos2026') {
-              const u = { name: authForm.username };
-              setIsAuthenticated(true); setCurrentUser(u);
-              localStorage.setItem('k3_session', JSON.stringify(u));
-              addLog('ACCESS_GRANTED', `${u.name} logged in`);
-              sendDiscord('SECURITY', `**${u.name}** accessed the system.`, 0x00FF88);
-            } else { alert("ACCESS DENIED"); }
-          };
+            const getFileIcon = (name) => {
+                const ext = name.split('.').pop().toLowerCase();
+                if (['jpg', 'png', 'gif', 'svg'].includes(ext)) return <FileImage size={18} />;
+                if (['js', 'jsx', 'py', 'html'].includes(ext)) return <FileCode size={18} />;
+                if (['txt', 'md', 'pdf'].includes(ext)) return <FileText size={18} />;
+                return <File size={18} />;
+            };
 
-          const handleTerminal = (v) => {
-            const cmd = v.toLowerCase().trim();
-            let res = [`> ${v}`];
-            if (cmd === 'help') res.push('status, clear, alert [msg], projects');
-            else if (cmd === 'status') res.push(`READY | P:${projects.length} | T:${team.length} | F:${files.length}`);
-            else if (cmd.startsWith('alert ')) {
-              const m = v.substring(6); sendDiscord('COMMAND_ALERT', m, 0xFF0055);
-              res.push(`Broadcasting: ${m}`);
-            } else if (cmd === 'clear') { setTermData({ input: '', output: ['> Terminal Reset'] }); return; }
-            setTermData(prev => ({ input: '', output: [...prev.output, ...res] }));
-            addLog('TERM_CMD', cmd);
-          };
+            // --- FONCTIONS LOGIQUES ---
+            const addProject = () => {
+                if (!projectForm.name) return;
+                setProjects([...projects, { id: Date.now(), ...projectForm, createdAt: new Date().toISOString() }]);
+                addLog('PROJECT_CREATE', `Created: ${projectForm.name}`);
+                setShowProjectModal(false); setProjectForm({ name: '', description: '', progress: 0 });
+            };
 
-          const fileUpload = (e, pId) => {
-            Array.from(e.target.files).forEach(file => {
-              const r = new FileReader();
-              r.onload = (ev) => {
-                const nf = { id: Math.random(), name: file.name, size: (file.size/1024).toFixed(1)+'KB', data: ev.target.result, projectId: pId, uploader: currentUser.name, date: new Date().toISOString() };
-                setFiles(p => [...p, nf]);
-                addLog('FILE_ADD', `${file.name} -> ${projects.find(x=>x.id===pId)?.name}`);
-                sendDiscord('FILES', `**${currentUser.name}** uploaded **${file.name}**.`);
-              };
-              r.readAsDataURL(file);
-            });
-          };
+            const updateProject = () => {
+                setProjects(projects.map(p => p.id === editingProject.id ? { ...p, ...projectForm } : p));
+                setShowProjectModal(false); setEditingProject(null);
+            };
 
-          if (!isAuthenticated) return (
-            <div style={{ height: '100vh', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <form onSubmit={handleLogin} style={{ background: '#0D0D0E', padding: '40px', borderRadius: '16px', border: '1px solid #1F1F21', width: '320px', textAlign: 'center' }}>
-                <Shield size={48} color="#00F2FF" style={{ marginBottom: '20px' }} />
-                <h2 style={{ color: '#FFF', marginBottom: '25px', letterSpacing: '2px' }}>KRYNOS AUTH</h2>
-                <input type="text" placeholder="Username" style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '10px', outline: 'none' }} onChange={e=>setAuthForm({...authForm, username: e.target.value})}/>
-                <input type="password" placeholder="Passkey" style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '20px', outline: 'none' }} onChange={e=>setAuthForm({...authForm, password: e.target.value})}/>
-                <button type="submit" style={{ width: '100%', padding: '12px', background: '#00F2FF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>ENTER</button>
-              </form>
-            </div>
-          );
+            const deleteProject = (id) => {
+                setProjects(projects.filter(p => p.id !== id));
+                setFiles(files.filter(f => f.projectId !== id));
+            };
 
-          return (
-            <div style={{ display: 'flex', height: '100vh', background: '#050505' }}>
-              <aside style={{ width: '260px', background: '#0D0D0E', borderRight: '1px solid #1F1F21', padding: '30px 20px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ color: '#00F2FF', fontWeight: 800, fontSize: '22px', marginBottom: '40px' }}>KRYNOS</div>
-                <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {['dashboard', 'projects', 'team', 'storage', 'security', 'terminal', 'settings'].map(i => (
-                    <button key={i} onClick={()=>setCurrentPage(i)} style={{ padding:'12px', background:currentPage===i?'#161618':'transparent', border:'none', color:currentPage===i?'#00F2FF':'#888', borderRadius:'8px', cursor:'pointer', textAlign:'left', textTransform: 'capitalize' }}>{i}</button>
-                  ))}
-                </nav>
-                <div style={{ padding:'15px', background:'#111', borderRadius:'12px', border:'1px solid #222' }}>
-                  <div style={{ fontSize:'12px', color:'#FFF', marginBottom:'8px' }}>USER: {currentUser.name}</div>
-                  <button onClick={()=>{localStorage.removeItem('k3_session'); window.location.reload();}} style={{ width:'100%', padding:'6px', background:'#FF4B2B22', color:'#FF4B2B', border:'1px solid #FF4B2B44', borderRadius:'6px', fontSize:'11px', cursor:'pointer' }}>LOGOUT</button>
-                </div>
-              </aside>
+            const addMember = () => {
+                setTeam([...team, { id: Date.now(), ...memberForm, joinedAt: new Date().toISOString() }]);
+                setShowMemberModal(false); setMemberForm({ name: '', role: '', status: 'active' });
+            };
 
-              <main style={{ marginLeft: '260px', flex: 1, padding: '40px 60px', overflowY: 'auto' }}>
-                {currentPage === 'dashboard' && (
-                  <div>
-                    <h1 style={{ fontSize:'32px', marginBottom:'30px' }}>Dashboard</h1>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'20px', marginBottom:'40px' }}>
-                      <div style={{ background:'#161618', padding:'24px', borderRadius:'12px', border:'1px solid #262629' }}>
-                        <div style={{ color:'#888', fontSize:'12px' }}>PROJECTS</div><div style={{ fontSize:'32px', fontWeight:700 }}>{projects.length}</div>
-                      </div>
-                      <div style={{ background:'#161618', padding:'24px', borderRadius:'12px', border:'1px solid #262629' }}>
-                        <div style={{ color:'#888', fontSize:'12px' }}>ACTIVE TEAM</div><div style={{ fontSize:'32px', fontWeight:700, color:'#00FF88' }}>{team.filter(m=>m.status==='active').length}</div>
-                      </div>
-                      <div style={{ background:'#161618', padding:'24px', borderRadius:'12px', border:'1px solid #262629' }}>
-                        <div style={{ color:'#888', fontSize:'12px' }}>FILES</div><div style={{ fontSize:'32px', fontWeight:700 }}>{files.length}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {currentPage === 'projects' && (
-                  <div>
-                    <button onClick={()=>setModals({...modals, project:true})} style={{ background:'#00F2FF', padding:'10px 20px', border:'none', borderRadius:'8px', fontWeight:700 }}>+ NEW</button>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'20px', marginTop: '20px' }}>
-                      {projects.map(p=>(
-                        <div key={p.id} style={{ background:'#161618', padding:'24px', borderRadius:'12px', border:'1px solid #262629' }}>
-                          <h3 style={{ fontSize:'20px' }}>{p.name}</h3>
-                          <p style={{ color:'#888', fontSize:'14px' }}>{p.desc}</p>
-                          <label style={{ display:'block', textAlign:'center', padding:'10px', background:'#050505', border:'1px solid #262629', borderRadius:'8px', cursor:'pointer' }}>
-                            Upload <input type="file" hidden onChange={e=>fileUpload(e, p.id)} />
-                          </label>
+            const updateMember = () => {
+                setTeam(team.map(m => m.id === editingMember.id ? { ...m, ...memberForm } : m));
+                setShowMemberModal(false); setEditingMember(null);
+            };
+
+            const uploadFiles = (projectId, fileList) => {
+                Array.from(fileList).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setFiles(prev => [...prev, {
+                            id: Date.now() + Math.random(),
+                            projectId,
+                            name: file.name,
+                            size: file.size,
+                            data: e.target.result,
+                            uploadedAt: new Date().toISOString()
+                        }]);
+                        addLog('FILE_UPLOAD', `${file.name} uploaded`);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                setShowFileModal(null);
+            };
+
+            const runCommand = (cmd) => {
+                const output = [...terminalOutput, `> ${cmd}`];
+                if (cmd === 'help') output.push('Commands: status, clear, projects, team');
+                else if (cmd === 'status') output.push(`Projects: ${projects.length} | Team: ${team.length}`);
+                else if (cmd === 'clear') { setTerminalOutput(['> Cleared']); setTerminalInput(''); return; }
+                else output.push(`Unknown: ${cmd}`);
+                setTerminalOutput(output); setTerminalInput('');
+            };
+
+            // --- INTERFACE (JSX) ---
+            const activeMembers = team.filter(m => m.status === 'active').length;
+
+            return (
+                <div style={{ display: 'flex', minHeight: '100vh', background: '#050505', color: '#E5E5E5' }}>
+                    {/* SIDEBAR */}
+                    <div style={{ width: '280px', background: '#0D0D0E', borderRight: '1px solid #1F1F21', padding: '30px 20px', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#00F2FF', marginBottom: '40px', letterSpacing: '2px' }}>KRYNOS</div>
+                        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {[
+                                { id: 'dashboard', icon: BarChart3, label: 'Dashboard' },
+                                { id: 'projects', icon: Folder, label: 'Projects' },
+                                { id: 'team', icon: Users, label: 'Team' },
+                                { id: 'storage', icon: HardDrive, label: 'Storage' },
+                                { id: 'security', icon: Shield, label: 'Security' },
+                                { id: 'terminal', icon: Terminal, label: 'Terminal' },
+                                { id: 'settings', icon: Settings, label: 'Settings' }
+                            ].map(item => (
+                                <button key={item.id} onClick={() => setCurrentPage(item.id)} style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                                    background: currentPage === item.id ? 'rgba(0, 242, 255, 0.08)' : 'transparent',
+                                    border: 'none', borderRadius: '8px',
+                                    color: currentPage === item.id ? '#00F2FF' : '#888',
+                                    cursor: 'pointer', fontSize: '14px', fontWeight: 600, transition: '0.2s', textAlign:'left'
+                                }}>
+                                    <item.icon size={18} /> {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div style={{ fontSize: '12px', color: '#444', textAlign: 'center', padding: '10px', border: '1px solid #1F1F21', borderRadius: '8px' }}>
+                            STATUS: {webhook ? 'ONLINE' : 'LOCAL'}
                         </div>
-                      ))}
                     </div>
-                  </div>
-                )}
 
-                {currentPage === 'storage' && (
-                  <div>
-                    <h1>Storage</h1>
-                    {projects.map(proj=>(
-                      <div key={proj.id} style={{ marginBottom:'30px' }}>
-                        <h3 style={{ color:'#00F2FF' }}>{proj.name}</h3>
-                        {files.filter(f=>f.projectId===proj.id).map(f=>(
-                          <div key={f.id} style={{ background:'#161618', padding:'15px', borderRadius:'10px', marginBottom: '5px' }}>{f.name}</div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </main>
+                    {/* MAIN CONTENT */}
+                    <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+                        {currentPage === 'dashboard' && (
+                            <div>
+                                <h1 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '30px' }}>Command Center</h1>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
+                                    <div style={{ background: '#161618', padding: '20px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                        <div style={{ color: '#888', fontSize: '12px' }}>PROJECTS</div>
+                                        <div style={{ fontSize: '32px', fontWeight: 700 }}>{projects.length}</div>
+                                    </div>
+                                    <div style={{ background: '#161618', padding: '20px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                        <div style={{ color: '#888', fontSize: '12px' }}>TEAM ACTIVE</div>
+                                        <div style={{ fontSize: '32px', fontWeight: 700, color: '#00F2FF' }}>{activeMembers}</div>
+                                    </div>
+                                </div>
+                                <h3>Activity Logs</h3>
+                                <div style={{ background: '#111', borderRadius: '12px', padding: '20px' }}>
+                                    {logs.slice(0, 8).map(l => (
+                                        <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #222', fontSize: '13px' }}>
+                                            <span style={{ color: '#00F2FF' }}>{l.action}</span>
+                                            <span>{l.details}</span>
+                                            <span style={{ color: '#444' }}>{new Date(l.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
-              {modals.project && (
-                <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <div style={{ background:'#111', padding:'30px', borderRadius:'16px', width: '350px' }}>
-                    <input placeholder="Name" style={{width: '100%', marginBottom: '10px', padding: '10px'}} onChange={e=>setForms({...forms, project:{...forms.project, name:e.target.value}})}/>
-                    <button style={{width: '100%', padding: '10px', background: '#00F2FF', border: 'none'}} onClick={()=>{setProjects([...projects,{...forms.project, id:Date.now()}]); setModals({...modals, project:false});}}>LAUNCH</button>
-                  </div>
+                        {currentPage === 'projects' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                                    <h1>Projects</h1>
+                                    <button onClick={() => setShowProjectModal(true)} style={{ background: '#00F2FF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>+ NEW</button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                                    {projects.map(p => (
+                                        <div key={p.id} style={{ background: '#161618', padding: '24px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <h3>{p.name}</h3>
+                                                <button onClick={() => deleteProject(p.id)} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer' }}><Trash2 size={16}/></button>
+                                            </div>
+                                            <p style={{ color: '#888', fontSize: '14px' }}>{p.description}</p>
+                                            <div style={{ height: '6px', background: '#333', borderRadius: '3px', marginTop: '10px', overflow: 'hidden' }}>
+                                                <div style={{ width: `${p.progress}%`, height: '100%', background: '#00F2FF' }}></div>
+                                            </div>
+                                            <button onClick={() => setShowFileModal(p.id)} style={{ marginTop: '15px', width: '100%', padding: '8px', background: '#111', border: '1px solid #333', color: '#FFF', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>Upload File</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentPage === 'team' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                                    <h1>Team</h1>
+                                    <button onClick={() => setShowMemberModal(true)} style={{ background: '#00F2FF', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>+ MEMBER</button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                                    {team.map(m => (
+                                        <div key={m.id} style={{ background: '#161618', padding: '20px', borderRadius: '12px', textAlign: 'center', border: '1px solid #262629' }}>
+                                            <div style={{ width: '10px', height: '10px', background: m.status === 'active' ? '#00FF88' : '#444', borderRadius: '50%', margin: '0 auto 10px' }}></div>
+                                            <h3>{m.name}</h3>
+                                            <p style={{ color: '#888', fontSize: '13px' }}>{m.role}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {currentPage === 'settings' && (
+                            <div>
+                                <h1>Settings</h1>
+                                <div style={{ background: '#161618', padding: '30px', borderRadius: '12px', marginTop: '20px' }}>
+                                    <label>Discord Webhook URL</label>
+                                    <input type="password" value={webhook} onChange={e => setWebhook(e.target.value)} style={{ width: '100%', padding: '10px', marginTop: '10px', background: '#000', border: '1px solid #333', color: '#FFF', borderRadius: '6px' }} />
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* TERMINAL, STORAGE, SECURITY PAGES would go here similarly */}
+                    </div>
+
+                    {/* MODALS */}
+                    {showProjectModal && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ background: '#111', padding: '30px', borderRadius: '16px', width: '400px', border: '1px solid #333' }}>
+                                <h2>New Project</h2>
+                                <input placeholder="Name" style={{ width: '100%', padding: '10px', marginBottom: '10px', background: '#000', border: '1px solid #333', color: '#FFF' }} onChange={e => setProjectForm({...projectForm, name: e.target.value})}/>
+                                <button onClick={addProject} style={{ width: '100%', padding: '10px', background: '#00F2FF', border: 'none', fontWeight: 700, cursor: 'pointer' }}>CREATE</button>
+                                <button onClick={() => setShowProjectModal(false)} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#888', border: 'none', marginTop: '10px', cursor: 'pointer' }}>CANCEL</button>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {showFileModal && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ background: '#111', padding: '30px', borderRadius: '16px', width: '400px', border: '1px solid #333', textAlign: 'center' }}>
+                                <h2>Upload Files</h2>
+                                <input type="file" multiple onChange={e => uploadFiles(showFileModal, e.target.files)} style={{ margin: '20px 0' }} />
+                                <button onClick={() => setShowFileModal(null)} style={{ width: '100%', padding: '10px', background: 'transparent', color: '#888', border: '1px solid #333', marginTop: '10px', cursor: 'pointer' }}>CLOSE</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-              )}
-            </div>
-          );
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
