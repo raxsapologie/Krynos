@@ -4,78 +4,193 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KRYNOS OS | Command Center</title>
-    
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
     <style>
-        body { margin: 0; padding: 0; background: #050505; color: #e5e5e5; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
-        #root { height: 100%; width: 100%; }
-        .loading { display: flex; align-items: center; justify-content: center; height: 100vh; color: #00F2FF; font-weight: 800; letter-spacing: 2px; }
+        body { margin: 0; padding: 0; background: #050505; color: #e5e5e5; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
+        #root { height: 100%; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #262629; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div class="loading">KRYNOS INITIALIZING...</div>
-    </div>
-
+    <div id="root"></div>
     <script type="text/babel">
-        // On récupère les composants React
         const { useState, useEffect } = React;
+        const { BarChart3, Users, Folder, Settings, Shield, LogOut, HardDrive, Plus, Upload, Trash2, File, Download, X } = lucide;
 
         function App() {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
+            const [currentUser, setCurrentUser] = useState('');
+            const [pass, setPass] = useState('');
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            
+            // États Data (Persistance via LocalStorage)
+            const [projects, setProjects] = useState(() => JSON.parse(localStorage.getItem('k_proj') || '[]'));
+            const [team, setTeam] = useState(() => JSON.parse(localStorage.getItem('k_team') || '[]'));
+            const [files, setFiles] = useState(() => JSON.parse(localStorage.getItem('k_files') || '[]'));
+            const [webhook, setWebhook] = useState(() => localStorage.getItem('k_webhook') || '');
 
-            // Système de Login ultra-simple pour tester
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (password === 'krynos2026') {
-                    setIsAuthenticated(true);
-                } else {
-                    alert("ACCÈS REFUSÉ");
-                }
+            useEffect(() => {
+                localStorage.setItem('k_proj', JSON.stringify(projects));
+                localStorage.setItem('k_team', JSON.stringify(team));
+                localStorage.setItem('k_files', JSON.stringify(files));
+                localStorage.setItem('k_webhook', webhook);
+            }, [projects, team, files, webhook]);
+
+            const sendDiscord = async (title, message) => {
+                if (!webhook) return;
+                try {
+                    await fetch(webhook, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            embeds: [{ title: `[KRYNOS] ${title}`, description: `${message}\n**Operative:** ${currentUser}`, color: 0x00F2FF, timestamp: new Date().toISOString() }]
+                        })
+                    });
+                } catch (e) { console.error(e); }
             };
 
-            if (!isAuthenticated) {
-                return (
-                    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505' }}>
-                        <div style={{ background: '#0D0D0E', padding: '40px', borderRadius: '16px', border: '1px solid #1F1F21', width: '320px', textAlign: 'center' }}>
-                            <h2 style={{ color: '#00F2FF', marginBottom: '30px', letterSpacing: '2px' }}>KRYNOS AUTH</h2>
-                            <form onSubmit={handleLogin}>
-                                <input 
-                                    type="text" 
-                                    placeholder="Username" 
-                                    style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '10px', outline: 'none' }}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                />
-                                <input 
-                                    type="password" 
-                                    placeholder="Passkey" 
-                                    style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '20px', outline: 'none' }}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                                <button type="submit" style={{ width: '100%', padding: '12px', background: '#00F2FF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>
-                                    INITIALIZE
-                                </button>
-                            </form>
-                        </div>
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (pass === 'krynos2026') {
+                    setIsAuthenticated(true);
+                    sendDiscord('SÉCURITÉ', `Accès autorisé pour l'opérateur **${currentUser}**.`);
+                } else { alert("ACCÈS REFUSÉ"); }
+            };
+
+            if (!isAuthenticated) return (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505' }}>
+                    <div style={{ background: '#0D0D0E', padding: '40px', borderRadius: '16px', border: '1px solid #1F1F21', width: '320px', textAlign: 'center' }}>
+                        <Shield size={48} color="#00F2FF" style={{ marginBottom: '20px' }} />
+                        <h2 style={{ color: '#FFF', marginBottom: '30px', letterSpacing: '2px' }}>KRYNOS AUTH</h2>
+                        <form onSubmit={handleLogin}>
+                            <input type="text" placeholder="Username" style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '10px', outline: 'none', boxSizing: 'border-box' }} onChange={e => setCurrentUser(e.target.value)} />
+                            <input type="password" placeholder="Passkey" style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #222', borderRadius: '8px', color: '#FFF', marginBottom: '20px', outline: 'none', boxSizing: 'border-box' }} onChange={e => setPass(e.target.value)} />
+                            <button type="submit" style={{ width: '100%', padding: '12px', background: '#00F2FF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', color: '#000' }}>INITIALIZE</button>
+                        </form>
                     </div>
-                );
-            }
+                </div>
+            );
 
             return (
-                <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-                    <h1 style={{ color: '#00F2FF' }}>BIENVENUE CHEZ KRYNOS, {username.toUpperCase()}</h1>
+                <div style={{ display: 'flex', height: '100vh' }}>
+                    <aside style={{ width: '260px', background: '#0D0D0E', borderRight: '1px solid #1F1F21', padding: '30px 20px', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ color: '#00F2FF', fontWeight: 800, fontSize: '22px', marginBottom: '40px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Shield size={24}/> KRYNOS
+                        </div>
+                        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {[
+                                { id: 'dashboard', icon: BarChart3, label: 'Overview' },
+                                { id: 'projects', icon: Folder, label: 'Projects' },
+                                { id: 'team', icon: Users, label: 'Team' },
+                                { id: 'storage', icon: HardDrive, label: 'Storage' },
+                                { id: 'settings', icon: Settings, label: 'Settings' }
+                            ].map(item => (
+                                <button key={item.id} onClick={() => setCurrentPage(item.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', background: currentPage === item.id ? 'rgba(0, 242, 255, 0.05)' : 'transparent', border: 'none', color: currentPage === item.id ? '#00F2FF' : '#888', cursor: 'pointer', fontSize: '14px', fontWeight: '500', textAlign: 'left' }}>
+                                    <item.icon size={18} /> {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div style={{ marginTop: 'auto', padding: '15px', background: '#161618', borderRadius: '12px', border: '1px solid #262629' }}>
+                            <div style={{ fontSize: '11px', color: '#FFF', marginBottom: '10px' }}>OPÉRATEUR : {currentUser.toUpperCase()}</div>
+                            <button onClick={() => window.location.reload()} style={{ width: '100%', padding: '8px', background: '#FF4B2B22', color: '#FF4B2B', border: '1px solid #FF4B2B44', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>LOGOUT</button>
+                        </div>
+                    </aside>
+
+                    <main style={{ flex: 1, padding: '40px 60px', overflowY: 'auto' }}>
+                        {currentPage === 'dashboard' && (
+                            <div>
+                                <h1 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '30px' }}>Command Center</h1>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                                    <div style={{ background: '#161618', padding: '24px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                        <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>PROJETS ACTIFS</div>
+                                        <div style={{ fontSize: '32px', fontWeight: 700 }}>{projects.length}</div>
+                                    </div>
+                                    <div style={{ background: '#161618', padding: '24px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                        <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>FICHIERS STOCKÉS</div>
+                                        <div style={{ fontSize: '32px', fontWeight: 700 }}>{files.length}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentPage === 'projects' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                                    <h1 style={{ fontSize: '28px', fontWeight: '700' }}>Opérations</h1>
+                                    <button onClick={() => {
+                                        const n = prompt("Nom du projet :");
+                                        if(n) setProjects([...projects, { id: Date.now(), name: n, progress: 0 }]);
+                                    }} style={{ background: '#00F2FF', color: '#000', border: 'none', borderRadius: '8px', padding: '10px 20px', fontWeight: '600', cursor: 'pointer' }}>+ NEW PROJECT</button>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                                    {projects.map(p => (
+                                        <div key={p.id} style={{ background: '#161618', padding: '24px', borderRadius: '12px', border: '1px solid #262629' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                                <h3 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>{p.name}</h3>
+                                                <button onClick={() => setProjects(projects.filter(x => x.id !== p.id))} style={{ background: 'none', border: 'none', color: '#444', cursor: 'pointer' }}><Trash2 size={16}/></button>
+                                            </div>
+                                            <label style={{ cursor: 'pointer', color: '#00F2FF', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <Upload size={14}/> Ajouter Fichier
+                                                <input type="file" hidden onChange={e => {
+                                                    const f = e.target.files[0];
+                                                    const reader = new FileReader();
+                                                    reader.onload = (ev) => {
+                                                        const nf = { id: Date.now(), name: f.name, size: (f.size/1024).toFixed(1)+'KB', data: ev.target.result, projectId: p.id, date: new Date().toISOString() };
+                                                        setFiles([...files, nf]);
+                                                        sendDiscord('FILE SYSTEM', `Nouveau fichier : **${f.name}**.`);
+                                                    };
+                                                    reader.readAsDataURL(f);
+                                                }} />
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentPage === 'storage' && (
+                            <div>
+                                <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '30px' }}>Stockage Catégorisé</h1>
+                                {projects.map(p => (
+                                    <div key={p.id} style={{ marginBottom: '30px' }}>
+                                        <h3 style={{ color: '#00F2FF', borderBottom: '1px solid #262629', paddingBottom: '10px' }}>{p.name}</h3>
+                                        <div style={{ display: 'grid', gap: '10px' }}>
+                                            {files.filter(f => f.projectId === p.id).map(f => (
+                                                <div key={f.id} style={{ background: '#111', padding: '15px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                    <File size={20} color="#888"/>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: '14px' }}>{f.name}</div>
+                                                        <div style={{ fontSize: '11px', color: '#444' }}>{f.size} • {new Date(f.date).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <button onClick={() => { const l = document.createElement('a'); l.href = f.data; l.download = f.name; l.click(); }} style={{ background: 'none', border: 'none', color: '#00F2FF', cursor: 'pointer' }}><Download size={18}/></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {currentPage === 'settings' && (
+                            <div>
+                                <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '30px' }}>Paramètres</h1>
+                                <div style={{ background: '#161618', padding: '30px', borderRadius: '12px', border: '1px solid #262629', maxWidth: '600px' }}>
+                                    <label style={{ color: '#888', fontSize: '12px', display: 'block', marginBottom: '10px' }}>URL DU WEBHOOK DISCORD</label>
+                                    <input type="password" value={webhook} onChange={e => setWebhook(e.target.value)} style={{ width: '100%', padding: '12px', background: '#050505', border: '1px solid #262629', borderRadius: '8px', color: '#00F2FF', outline: 'none', boxSizing: 'border-box' }} />
+                                    <p style={{ fontSize: '11px', color: '#444', marginTop: '10px' }}>Tous les événements système seront envoyés ici.</p>
+                                </div>
+                            </div>
+                        )}
+                    </main>
                 </div>
             );
         }
 
-        // Rendu final
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
